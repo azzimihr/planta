@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>system</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="console.css">
+    <link rel="stylesheet" href="calendar.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body class="view-home">
+    <div class="bg-base"></div>
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+    <div class="bg-glass"></div>
+
+    <!-- HOME -->
+    <div class="mind-space" id="view-home">
+        <div class="status-node top-left">
+            <span class="status-dot"></span>
+            <span class="mono">SYS.ONLINE // V.1.0</span>
+        </div>
+        <div class="clock-node top-right mono" id="clock">00:00:00</div>
+
+        <div class="core-node">
+            <h1><span class="highlight"></span></h1>
+        </div>
+
+        <button class="menu-shard shard-1" data-target="calendar">
+            <span class="num mono">01</span>
+            <span class="title">CALENDAR</span>
+        </button>
+        <button class="menu-shard shard-2" data-target="music">
+            <span class="num mono">02</span>
+            <span class="title">MUSIC</span>
+        </button>
+        <button class="menu-shard shard-3" data-target="library">
+            <span class="num mono">03</span>
+            <span class="title">LIBRARY</span>
+        </button>
+        <button class="menu-shard shard-4" data-target="terminal">
+            <span class="num mono">04</span>
+            <span class="title">TERMINAL</span>
+        </button>
+
+        <div class="hint-node bottom-right mono">
+            press <kbd>`</kbd> to open internal console
+        </div>
+    </div>
+
+        <!-- CALENDAR -->
+    <div class="calendar-view" id="view-calendar">
+        <div class="cal-panel">
+            <aside class="cal-side">
+                <button class="cal-side-btn cal-side-btn-home" id="cal-back">← home</button>
+                <div class="cal-side-divider"></div>
+                <button class="cal-side-btn" id="cal-today">today</button>
+                <button class="cal-side-btn" id="cal-export">export</button>
+                <button class="cal-side-btn" id="cal-import">import</button>
+                <div class="cal-side-spacer"></div>
+                <div class="cal-side-info" id="cal-info"></div>
+            </aside>
+            <main class="cal-main">
+                <header class="cal-header">
+                    <button class="cal-arrow" id="cal-prev">‹</button>
+                    <h2 class="cal-range" id="cal-range">—</h2>
+                    <button class="cal-arrow" id="cal-next">›</button>
+                </header>
+                <div class="cal-scroll" id="cal-scroll">
+                    <div class="cal-day-head" id="cal-day-head"></div>
+                    <div class="cal-grid" id="cal-grid"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <dev-console></dev-console>
+
+    <script src="console.js"></script>
+    <script src="calendar.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

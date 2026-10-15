@@ -1,0 +1,228 @@
+/* --- CSS Variables --- */
+:root {
+    /* Base Background Colors */
+    --bg-navy: #463453;        /* Deep olive */
+    --bg-navy-light: #5a3561;  /* Lighter olive */
+    
+    /* Background Shape Colors (Decoupled) */
+    --shape-1-color: #4c00ffc1; /* Translucent lime */
+    --shape-2-color: #d400ffc7; /* Translucent purple */
+    --shape-3-color: #ff3a9cc0;   /* Bright yellow-lime */
+    
+    /* Shard Colors (Default) */
+    --shard-bg: #c6c4c76c;      /* Translucent purple */
+    --shard-text: #0c000a9c;      /* Deep olive */
+    --shard-num: #bdbebef3;       /* Bright yellow-lime */
+    
+    /* Shard Colors (Hover) */
+    --shard-hover-bg: hsla(247, 100%, 82%, 0.575);     /* Translucent lime */
+    --shard-hover-text: #2c061faf;     /* Deep olive */
+    --shard-hover-num: #ff8dddad;      /* Bright yellow-lime */
+    --shard-hover-shadow: hsla(234, 100%, 57%, 0);   /* Bright yellow-lime */
+    
+    /* UI Elements (Decoupled) */
+    --status-dot-color: #ff0000c1;   /* Translucent lime */
+    --kbd-bg: #bf28e1c7;             /* Translucent purple */
+    --kbd-text: #264312;             /* Deep olive */
+    --kbd-shadow: #ffffffa9;           /* Bright yellow-lime */
+    
+    /* Text Colors */
+    --text-main: #ffffff;
+    --text-dim: rgba(255, 255, 255, 0.6);
+    --core-text: #bf28e1c7;          /* Translucent purple */
+    
+    /* Fonts */
+    --font-display: 'Anton', sans-serif;
+    --font-main: 'Rajdhani', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background-color: var(--bg-navy);
+    color: var(--text-main);
+    font-family: var(--font-main);
+    height: 100vh;
+    overflow: hidden;
+    cursor: crosshair; 
+}
+
+/* --- Background Layers --- */
+.bg-base {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--bg-navy) 0%, var(--bg-navy-light) 100%);
+    z-index: 0;
+}
+
+.bg-shapes {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.shape {
+    position: absolute;
+    opacity: 0.9;
+}
+
+.shape-1 {
+    top: -10%; left: -10%; width: 60vw; height: 40vh;
+    background: var(--shape-1-color);
+    clip-path: polygon(0 0, 100% 0, 80% 100%, 0% 100%);
+    transform: rotate(-15deg);
+}
+
+.shape-2 {
+    bottom: -20%; right: -10%; width: 50vw; height: 60vh;
+    background: var(--shape-2-color);
+    clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%);
+    transform: rotate(10deg);
+    mix-blend-mode: overlay;
+}
+
+.shape-3 {
+    top: 40%; left: 30%; width: 30vw; height: 30vh;
+    background: var(--shape-3-color);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    transform: rotate(45deg);
+}
+
+.bg-glass {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(15, 23, 42, 0.8) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.mind-space {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    z-index: 5;
+}
+
+.mono { font-family: var(--font-mono); }
+.highlight { 
+    color: var(--status-dot-color); /* Reuses the lime accent for the highlight */
+    font-family: var(--font-display);
+    letter-spacing: 2px;
+}
+
+.status-node, .clock-node, .hint-node {
+    position: absolute;
+    font-size: 1rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    font-weight: 700;
+}
+
+.top-left { top: 2rem; left: 2rem; }
+.top-right { top: 2rem; right: 2rem; }
+.bottom-right { bottom: 2rem; right: 2rem; }
+
+/* --- Decoupled Status Dot --- */
+.status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--status-dot-color);
+    margin-right: 8px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.core-node {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.core-node h1 {
+    font-family: var(--font-display);
+    font-size: clamp(4rem, 10vw, 10rem);
+    line-height: 0.85;
+    letter-spacing: -2px;
+    text-transform: uppercase;
+    color: var(--core-text);
+    mix-blend-mode: difference;
+}
+
+/* --- The Floating Menu Shards --- */
+.menu-shard {
+    position: absolute;
+    width: 280px; height: 120px;
+    clip-path: polygon(0 0, 100% 0, 90% 100%, 0% 100%);
+    background: var(--shard-bg);
+    border: none;
+    color: var(--shard-text);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 2rem;
+    text-align: left;
+    
+    animation: none; 
+    will-change: transform;
+    
+    transition: background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.shard-1 { top: 20%; left: 10%; --rot: -5deg; }
+.shard-2 { top: 25%; right: 10%; --rot: 5deg; }
+.shard-3 { bottom: 20%; left: 15%; --rot: 3deg; }
+.shard-4 { bottom: 25%; right: 15%; --rot: -3deg; }
+
+.menu-shard .num {
+    font-size: 0.9rem;
+    color: var(--shard-num);
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.menu-shard .title {
+    font-family: var(--font-display);
+    font-size: 2.2rem;
+    line-height: 1;
+    letter-spacing: 1px;
+}
+
+/* --- Hover State (Fully Knob-ized) --- */
+.menu-shard:hover {
+    background: var(--shard-hover-bg);
+    color: var(--shard-hover-text);
+    box-shadow: -15px 15px 0px var(--shard-hover-shadow);
+    z-index: 100;
+}
+
+.menu-shard:hover .num { color: var(--shard-hover-num); }
+
+/* --- Decoupled Keyboard Hint --- */
+kbd {
+    background: var(--kbd-bg);
+    color: var(--kbd-text);
+    border-radius: 0;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 700;
+    box-shadow: 0 4px 0 var(--kbd-shadow); /* Added a shadow based on your accent */
+}
+
+/* --- View switching --- */
+.mind-space, .calendar-view {
+    transition: opacity 0.45s ease;
+}
+body.view-home .calendar-view      { opacity: 0; pointer-events: none; }
+body.view-calendar .mind-space     { opacity: 0; pointer-events: none; }
+body.view-calendar .calendar-view  { opacity: 1; pointer-events: auto; }
