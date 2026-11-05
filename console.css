@@ -6,7 +6,7 @@
     --console-text: #ffffff;
     --console-prompt: #88ff00c1;
     --console-input: #dbff3a;
-    --console-error: #bf28e1;
+    --console-error: #dbff3a;
     --console-font: 'Share Tech Mono', monospace;
     --console-blur: 14px;
 
@@ -79,8 +79,8 @@ dev-console {
         transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     box-shadow:
-        16px 16px 40px rgba(0, 0, 0, 0.274),
-        0 0 40px rgba(136, 255, 0, 0.15);
+        16px 16px 40px rgba(0, 0, 0, 0.219),
+        0 0 30px rgba(136, 255, 0, 0.103);
 }
 
 dev-console.open {

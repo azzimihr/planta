@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="favicon.jpeg">
 </head>
 <body class="view-home">
     <div class="bg-base"></div>
@@ -64,7 +65,7 @@
                 <button class="cal-side-btn" id="cal-export">export</button>
                 <button class="cal-side-btn" id="cal-import">import</button>
                 <div class="cal-side-spacer"></div>
-                <div class="cal-side-info" id="cal-info"></div>
+                <div class="cal-side-legend" id="cal-legend"></div>
             </aside>
             <main class="cal-main">
                 <header class="cal-header">
@@ -83,7 +84,10 @@
     <dev-console></dev-console>
 
     <script src="console.js"></script>
-    <script src="calendar.js"></script>
+    <script src="calendar-core.js"></script>
+    <script src="calendar-commands.js"></script>
+    <script src="calendar-render.js"></script>
+    <script src="calendar-ui.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

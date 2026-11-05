@@ -1,17 +1,17 @@
 :root {
     /* Calendar theme — bright blue, 2003 app */
-    --cal-panel-bg:     rgba(18, 40, 78, 0.60);
+    --cal-panel-bg:     rgba(18, 40, 78, 0.829);
     --cal-panel-border: rgba(120, 180, 255, 0.35);
     --cal-accent:       #4a9eff;
     --cal-accent-soft:  rgba(74, 158, 255, 0.35);
-    --cal-accent-glow:  rgba(74, 158, 255, 0.6);
+    --cal-accent-glow:  rgba(255, 255, 255, 0.295);
     --cal-text:         #eaf3ff;
     --cal-dim:          rgba(255, 255, 255, 0.55);
     --cal-grid-line:    rgba(120, 180, 255, 0.16);
-    --cal-travel:       #00d4ff;
-    --cal-travel-ink:   #001a2e;
+    --cal-travel:       #ffffff75;
+    --cal-travel-ink:   #000000b7;
 
-    --cal-event-alpha:          0.92;
+    --cal-event-alpha:          0.95;
     --cal-event-overlap-alpha:  0.68;
     --cal-hour-height:          40px;   /* minimum; JS grows this if needed */
     --cal-gutter:               62px;
@@ -100,24 +100,55 @@
 
 .cal-side-spacer { flex: 1; }
 
-.cal-side-info {
+/* --- Legend (bottom-aligned in the sidebar) --- */
+.cal-side-legend {
     font-family: var(--cal-mono);
     font-size: 0.8rem;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.4px;
     color: var(--cal-dim);
-    line-height: 1.8;
+    line-height: 1.5;
     padding-top: 1rem;
     border-top: 1px solid var(--cal-accent-soft);
+    max-height: 55%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cal-accent-soft) transparent;
 }
-.cal-side-info strong {
+.cal-side-legend::-webkit-scrollbar { width: 6px; }
+.cal-side-legend::-webkit-scrollbar-thumb { background: var(--cal-accent-soft); }
+
+.cal-side-legend strong {
     display: block;
     color: var(--cal-accent);
     font-weight: 500;
     letter-spacing: 1.5px;
-    margin-bottom: 0.15rem;
-    margin-top: 0.5rem;
+    margin-bottom: 0.6rem;
+    text-transform: lowercase;
 }
-.cal-side-info strong:first-child { margin-top: 0; }
+
+.cal-legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    margin-bottom: 0.5rem;
+}
+
+.cal-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+.cal-legend-label {
+    color: var(--cal-text);
+    word-break: break-word;
+    line-height: 1.3;
+}
 
 /* --- Main --- */
 .cal-main {
@@ -281,18 +312,19 @@
     border-radius: 0;
     background: var(--ev-color, #4a9eff);
     background-image:
-        linear-gradient(180deg,
-            rgba(255,255,255,0.38) 0%,
-            rgba(255,255,255,0.14) 38%,
+        linear-gradient(0deg,
+            rgba(255, 255, 255, 0.21) 0%,
+            rgba(255, 255, 255, 0.08) 38%,
             rgba(255,255,255,0.0) 60%,
-            rgba(0,0,0,0.10) 100%),
+            rgba(0,0,0,0.08) 100%),
         linear-gradient(180deg, var(--ev-color, #4a9eff), var(--ev-color, #4a9eff));
     opacity: var(--cal-event-alpha);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.55),
         inset 0 -1px 0 rgba(0, 0, 0, 0.18),
         0 1px 2px rgba(0, 0, 0, 0.2);
-    color: #0a1a2e;
+    color: #000000b9;
+    /* text-shadow: #4a9eff; */
     font-family: var(--cal-font);
     cursor: default;
     transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
@@ -305,14 +337,14 @@
     position: absolute;
     top: 3px; left: 6px;
     width: 30px; height: 10px;
-    background: radial-gradient(ellipse at center,
-        rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%);
+    /* background: radial-gradient(ellipse at center, */
+        /* rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 70%); */
     pointer-events: none;
     opacity: 0.75;
 }
 
 .cal-event:hover {
-    transform: translateY(-1px) scale(1.005);
+    /* transform: translateY(-1px) scale(1.005); */
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.7),
         inset 0 -1px 0 rgba(0, 0, 0, 0.2),

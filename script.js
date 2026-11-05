@@ -1,11 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
     // --- Live Clock ---
     const clockElement = document.getElementById('clock');
     function updateTime() {
         const now = new Date();
-        clockElement.textContent = now.toLocaleTimeString('en-US', { 
-            hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' 
+        clockElement.textContent = now.toLocaleTimeString('en-US', {
+            hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
         });
     }
     updateTime();
@@ -14,74 +13,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Floaty Physics Engine ---
     const shards = document.querySelectorAll('.menu-shard');
     const shapes = document.querySelectorAll('.shape');
-    
+
     let mouseX = 0, mouseY = 0;
     let targetX = 0, targetY = 0;
 
-    // Track mouse globally
     window.addEventListener('mousemove', (e) => {
-        targetX = (e.clientX / window.innerWidth - 0.5) * 1.5;
-        targetY = (e.clientY / window.innerHeight - 0.5) * 1.5;
+        targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+        targetY = (e.clientY / window.innerHeight - 0.5) * 2;
     });
 
-    // Setup each shard
     shards.forEach((shard, i) => {
-        shard.dataset.offset = i * 2.5; 
+        shard.dataset.offset = i * 2.5;
         shard.dataset.hover = 'false';
-        
-        // Read your CSS variable --rot to keep your layout angles
         const style = window.getComputedStyle(shard);
         let baseRot = style.getPropertyValue('--rot') || '0deg';
         shard.dataset.baseRot = parseFloat(baseRot);
-        
         shard.dataset.currentScale = 1.0;
-
         shard.addEventListener('mouseenter', () => shard.dataset.hover = 'true');
         shard.addEventListener('mouseleave', () => shard.dataset.hover = 'false');
-        
         shard.addEventListener('click', () => {
             console.log(`[system] initiating: ${shard.dataset.target}`);
         });
     });
 
     function animate() {
-        // Smooth mouse interpolation for buttery parallax
         mouseX += (targetX - mouseX) * 0.05;
         mouseY += (targetY - mouseY) * 0.05;
-        
-        const t = Date.now() * 0.001; 
+        const t = Date.now() * 0.001;
 
         shards.forEach(shard => {
             const offset = parseFloat(shard.dataset.offset);
             const hovered = shard.dataset.hover === 'true';
             const baseRot = parseFloat(shard.dataset.baseRot);
 
-            // 1. Organic Base Floating (X, Y, and Rotation drift independently)
-            const floatX = Math.sin(t * 1.3 + offset) * 15;  
-            const floatY = Math.cos(t * 1.7 + offset) * 20;  
-            const floatRot = Math.sin(t * 1 + offset) * 10; 
+            const floatX = Math.sin(t * 1.1 + offset) * 25;
+            const floatY = Math.cos(t * 1.4 + offset) * 35;
+            const floatRot = Math.sin(t * 0.8 + offset) * 8;
 
-            // 2. Global Mouse Parallax (Subtle depth)
-            const parX = mouseX * -45; 
+            const parX = mouseX * -45;
             const parY = mouseY * -45;
 
-            // 3. Active Hover Animation (Smooth, slow, breathing)
-            let targetScale = hovered ? 1.5 : 1.0;
-            
-            // Slower frequency for a gentle wobble, not a shake
-            let hoverWobble = hovered ? Math.sin(t * 3) * 1.5 : 0; 
-            let hoverPulse = hovered ? Math.sin(t * 2) * 0.01 : 0; 
+            let targetScale = hovered ? 1.12 : 1.0;
+            let hoverWobble = hovered ? Math.sin(t * 3) * 1.5 : 0;
+            let hoverPulse = hovered ? Math.sin(t * 2) * 0.01 : 0;
 
-            // Smoothly interpolate scale so it doesn't snap
             shard.dataset.currentScale = parseFloat(shard.dataset.currentScale) + (targetScale - parseFloat(shard.dataset.currentScale)) * 0.15;
             const currentScale = parseFloat(shard.dataset.currentScale) + hoverPulse;
 
-            // Combine into one smooth transform
             const finalRot = baseRot + floatRot + hoverWobble;
             shard.style.transform = `translate3d(${floatX + parX}px, ${floatY + parY}px, 0) rotate(${finalRot}deg) scale(${currentScale})`;
         });
 
-        // Floaty Background Shapes (Slower parallax for depth)
         shapes.forEach((shape, i) => {
             const speed = (i + 1) * 25;
             const rot = t * (i + 1) * 4;
@@ -90,8 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         requestAnimationFrame(animate);
     }
+    animate();
 
-        // --- Shard → view wiring ---
+    // --- Shard → view wiring ---
     document.querySelectorAll('.menu-shard').forEach(shard => {
         shard.addEventListener('click', () => {
             if (shard.dataset.target === 'calendar') Calendar.show();
@@ -115,21 +98,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const printDispatch = run((kind, name) => {
+        if (kind === 'ev')            Calendar.cmd.printEvent(name);
+        else if (kind === 'template') Calendar.cmd.printTemplate(name);
+        else if (kind === 'distances')Calendar.cmd.printDistances();
+        else throw new Calendar.ParseError(`unknown print target: ${kind}`);
+    });
+
     dc.registerCommand('distance', run((pair, dist) => Calendar.cmd.addDistance(pair, dist)));
     dc.registerCommand('template', run((...a) => Calendar.cmd.addTemplate(a)));
     dc.registerCommand('add',      run((...a) => Calendar.cmd.addEvent(a)));
     dc.registerCommand('addt',     run((...a) => Calendar.cmd.addTemplated(a)));
-    dc.registerCommand('delete',   run((kind, name) => {
-        if (kind === 'template') Calendar.cmd.deleteTemplate(name);
-        else if (kind === 'event') Calendar.cmd.deleteEvent(name);
-        else throw new Calendar.ParseError(`unknown delete target: ${kind}`);
+    dc.registerCommand('t',        run((...a) => Calendar.cmd.addTemplatedCompact(a)));
+
+    dc.registerCommand('del', run((kind, name) => {
+        if (kind === 'temp')     Calendar.cmd.deleteTemplate(name);
+        else if (kind === 'ev')  Calendar.cmd.deleteEvent(name);
+        else throw new Calendar.ParseError(`unknown del target: ${kind}`);
     }));
-    dc.registerCommand('print', run((kind, name) => {
-        if (kind === 'ev') Calendar.cmd.printEvent(name);
-        else if (kind === 'template') Calendar.cmd.printTemplate(name);
-        else if (kind === 'distances') Calendar.cmd.printDistances();
-        else throw new Calendar.ParseError(`unknown print target: ${kind}`);
-    }));
+
+    dc.registerCommand('rename', run((from, to) => Calendar.cmd.renameEvent(from, to)));
+    dc.registerCommand('mv',     run((from, to) => Calendar.cmd.renameEvent(from, to)));
+
+    dc.registerCommand('print', printDispatch);
+    dc.registerCommand('list',  printDispatch);
+    dc.registerCommand('ls',    printDispatch);
+
     dc.registerCommand('view', run((range) => Calendar.cmd.setView(range)));
 
     // --- Help system ---
@@ -138,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'distance <locA>-<locB> <h.m>',
             '',
             '  define symmetric travel time between two locations.',
-            '  the .m part is tens-of-minutes, so 0.2 = 20 minutes.',
+            '  minutes: 1 digit = tens (0-50); 2 digits = 00-55, multiples of 5.',
             '  example: distance dorm-fax 0.2',
         ].join('\n'),
 
@@ -154,10 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'add w<days>   <range> <name> <location> [color]',
             'add d<DDMMYY> <range> <name> <location> [color]',
             '',
-            '  w-variant: weekly repeating event. days is comma-separated 1-7 (mon=1).',
-            '  d-variant: single dated event.',
-            '  range like 2.5p-4p or 11a-1p.',
-            '  color is optional 3-digit hex without #.',
+            '  time: hour [1-12 | a|b|c] [.MM] [a|p]?',
+            '  without a/p, 7..c are AM, 1..6 are PM (default window 7a-6p).',
+            '  range examples: 2.5p-4p   b.4-1.1   11a-13',
             '',
             '  examples:',
             '    add w2,5 2.5p-4p MRS fax',
@@ -168,26 +161,41 @@ document.addEventListener('DOMContentLoaded', () => {
             'addt <template> w<days>   <range> <name> [color]',
             'addt <template> d<DDMMYY> <range> <name> [color]',
             '',
-            '  like add, but pulls location (and color) from a template.',
-            '  event color overrides template color when both present.',
-            '',
-            '  examples:',
-            '    addt subj w2,5 2.5p-4p MRS',
-            '    addt subj w3 1p-2.5p LAB f0f',
+            '  like add, but location comes from the template.',
+            '  compact variant: t <template> <days|date> <range> <name> [color]',
         ].join('\n'),
 
-        delete: [
-            'delete template <name>',
-            'delete event <name>',
+        t: [
+            't <template> <compact> <range> <name> [color]',
             '',
-            '  delete a template (events keep effective attributes)',
-            '  or a single event.',
+            '  compact templated add.',
+            '  <compact> = sorted weekday digits (4, 45, 137, 1234567)',
+            '           or 6-digit DDMMYY date (281126).',
+            '  sorted digits always mean weekdays; unsorted 6-digit is a date.',
+            '',
+            '  example: t vezbe 45 b.4-1.1 ntp',
+            '           (= addt vezbe w4,5 11.4a-1.1p ntp)',
+        ].join('\n'),
+
+        del: [
+            'del temp <name>',
+            'del ev <name>',
+            '',
+            '  delete a template (events freeze effective color) or an event.',
+        ].join('\n'),
+
+        rename: [
+            'rename <old> <new>',
+            'mv     <old> <new>',
+            '',
+            '  rename an event.',
         ].join('\n'),
 
         print: [
             'print ev <name>',
             'print template <name>',
             'print distances',
+            'list|ls  (aliases)',
             '',
             '  display calendar data.',
         ].join('\n'),
@@ -217,14 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text) { dc.print(`no help for '${topic}'`, 'error'); return; }
         dc.print(text);
     });
-    
-    animate();
 
-    // Console Hint
+    // --- Console hint ---
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') { 
-            e.preventDefault(); 
-            console.log('[system] console requested.'); 
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            console.log('[system] console requested.');
         }
     });
 });

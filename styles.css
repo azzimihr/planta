@@ -1,3 +1,9 @@
+@property --bg-navy       { syntax: '<color>'; inherits: true; initial-value: #264312; }
+@property --bg-navy-light { syntax: '<color>'; inherits: true; initial-value: #385816; }
+@property --shape-1-color { syntax: '<color>'; inherits: true; initial-value: #88ff00c1; }
+@property --shape-2-color { syntax: '<color>'; inherits: true; initial-value: #bf28e1c7; }
+@property --shape-3-color { syntax: '<color>'; inherits: true; initial-value: #dbff3a; }
+
 /* --- CSS Variables --- */
 :root {
     /* Base Background Colors */
@@ -35,6 +41,13 @@
     --font-display: 'Anton', sans-serif;
     --font-main: 'Rajdhani', sans-serif;
     --font-mono: 'Share Tech Mono', monospace;
+
+        /* --- Calendar scene palette (background + shapes when calendar is open) --- */
+    --cal-bg-navy:        #094ece;
+    --cal-bg-navy-light:  #14264a;
+    --cal-shape-1-color: #0026ffa8; /* Translucent lime */
+    --cal-shape-2-color: #3f2afaa9; /* Translucent purple */
+    --cal-shape-3-color: #0b75ff94;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -226,3 +239,19 @@ kbd {
 body.view-home .calendar-view      { opacity: 0; pointer-events: none; }
 body.view-calendar .mind-space     { opacity: 0; pointer-events: none; }
 body.view-calendar .calendar-view  { opacity: 1; pointer-events: auto; }
+
+body.view-calendar {
+    --bg-navy:        var(--cal-bg-navy);
+    --bg-navy-light:  var(--cal-bg-navy-light);
+    --shape-1-color:  var(--cal-shape-1-color);
+    --shape-2-color:  var(--cal-shape-2-color);
+    --shape-3-color:  var(--cal-shape-3-color);
+}
+
+.bg-base {
+    transition: background 0.6s ease;
+}
+
+.shape {
+    transition: background 0.6s ease;
+}
