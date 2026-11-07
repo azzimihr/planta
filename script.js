@@ -74,6 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     animate();
 
+    // --- Backtick hint opens console ---
+    document.getElementById('kbd-console')?.addEventListener('click', () => {
+        window.devConsole?.toggle(true);
+    });
+
     // --- Shard → view wiring ---
     document.querySelectorAll('.menu-shard').forEach(shard => {
         shard.addEventListener('click', () => {
@@ -110,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dc.registerCommand('add',      run((...a) => Calendar.cmd.addEvent(a)));
     dc.registerCommand('addt',     run((...a) => Calendar.cmd.addTemplated(a)));
     dc.registerCommand('t',        run((...a) => Calendar.cmd.addTemplatedCompact(a)));
+    dc.registerCommand('item',     run((...a) => Calendar.cmd.item(a)));
 
     dc.registerCommand('del', run((kind, name) => {
         if (kind === 'temp')     Calendar.cmd.deleteTemplate(name);
@@ -124,15 +130,23 @@ document.addEventListener('DOMContentLoaded', () => {
     dc.registerCommand('list',  printDispatch);
     dc.registerCommand('ls',    printDispatch);
 
-    dc.registerCommand('view', run((range) => Calendar.cmd.setView(range)));
+    dc.registerCommand('printall', run((kind) => {
+        if (kind === 't')      Calendar.cmd.printAllTemplates();
+        else if (kind === 'e') Calendar.cmd.printAllEvents();
+        else throw new Calendar.ParseError(`unknown printall target: ${kind}`);
+    }));
 
-    // --- Help system ---
+    dc.registerCommand('view', run((range) => Calendar.cmd.setView(range)));
+    dc.registerCommand('time', run((range) => Calendar.cmd.setView(range)));
+
+    dc.registerCommand('days', run((str) => Calendar.cmd.setDays(str)));
+    // --- Help ---
     const HELP = {
         distance: [
             'distance <locA>-<locB> <h.m>',
             '',
-            '  define symmetric travel time between two locations.',
-            '  minutes: 1 digit = tens (0-50); 2 digits = 00-55, multiples of 5.',
+            '  define or edit symmetric travel time between two locations.',
+            '  minutes: 1 digit = tens; 2 digits = 00-55, multiples of 5.',
             '  example: distance dorm-fax 0.2',
         ].join('\n'),
 
@@ -149,8 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'add d<DDMMYY> <range> <name> <location> [color]',
             '',
             '  time: hour [1-12 | a|b|c] [.MM] [a|p]?',
-            '  without a/p, 7..c are AM, 1..6 are PM (default window 7a-6p).',
-            '  range examples: 2.5p-4p   b.4-1.1   11a-13',
+            '  without a/p, 7..c are AM, 1..6 are PM.',
             '',
             '  examples:',
             '    add w2,5 2.5p-4p MRS fax',
@@ -169,19 +182,24 @@ document.addEventListener('DOMContentLoaded', () => {
             't <template> <compact> <range> <name> [color]',
             '',
             '  compact templated add.',
-            '  <compact> = sorted weekday digits (4, 45, 137, 1234567)',
-            '           or 6-digit DDMMYY date (281126).',
-            '  sorted digits always mean weekdays; unsorted 6-digit is a date.',
+            '  <compact>: sorted weekday digits (4, 45, 137, 1234567)',
+            '          or 6-digit DDMMYY date (281126).',
             '',
             '  example: t vezbe 45 b.4-1.1 ntp',
-            '           (= addt vezbe w4,5 11.4a-1.1p ntp)',
+        ].join('\n'),
+
+        item: [
+            'item <template> + item1 item2 - item3',
+            '',
+            '  add/remove required items on a template.',
+            '  + adds; - removes. conflicts prompt for y/n.',
         ].join('\n'),
 
         del: [
             'del temp <name>',
             'del ev <name>',
             '',
-            '  delete a template (events freeze effective color) or an event.',
+            '  delete a template or an event.',
         ].join('\n'),
 
         rename: [
@@ -195,9 +213,17 @@ document.addEventListener('DOMContentLoaded', () => {
             'print ev <name>',
             'print template <name>',
             'print distances',
-            'list|ls  (aliases)',
+            'list | ls    (aliases)',
+            'printall t | printall e',
             '',
             '  display calendar data.',
+        ].join('\n'),
+
+        printall: [
+            'printall t',
+            'printall e',
+            '',
+            '  tabular dump of all templates / all events.',
         ].join('\n'),
 
         view: [
@@ -205,6 +231,21 @@ document.addEventListener('DOMContentLoaded', () => {
             '',
             '  set visible hour range. single-hour granularity, 0-24.',
             '  example: view 06-20',
+        ].join('\n'),
+
+        time: [
+            'time <start>-<end>',
+            '',
+            '  set visible hour range. single-hour granularity, 0-24.',
+            '  example: time 06-20  (alias for view)',
+        ].join('\n'),
+
+        days: [
+        'days <days>',
+        '',
+        '  set which weekdays are visible.',
+        '  formats: 1357 (list of sorted numbers) or 1-4 (range).',
+        '  example: days 1-5',
         ].join('\n'),
 
         help: [
@@ -220,11 +261,13 @@ document.addEventListener('DOMContentLoaded', () => {
             dc.print('try: help <command>');
             return;
         }
-        const topic = args[0].toLowerCase();
+        let topic = args[0].toLowerCase();
+        if (topic === 'list' || topic === 'ls') topic = 'print';
         const text = HELP[topic];
         if (!text) { dc.print(`no help for '${topic}'`, 'error'); return; }
         dc.print(text);
     });
+    
 
     // --- Console hint ---
     document.addEventListener('keydown', (e) => {

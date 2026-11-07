@@ -68,6 +68,11 @@
         reader.readAsText(file);
     }
 
+    function goHome() {
+        document.body.classList.remove('view-calendar');
+        document.body.classList.add('view-home');
+    }
+
     function init() {
         Calendar.load();
         setWeekStart(getMondayOf(new Date()));
@@ -75,10 +80,7 @@
         document.getElementById('cal-prev').addEventListener('click', () => shiftWeek(-1));
         document.getElementById('cal-next').addEventListener('click', () => shiftWeek(1));
         document.getElementById('cal-today').addEventListener('click', () => { goToday(); scrollToNow(); });
-        document.getElementById('cal-back').addEventListener('click', () => {
-            document.body.classList.remove('view-calendar');
-            document.body.classList.add('view-home');
-        });
+        document.getElementById('cal-back').addEventListener('click', goHome);
         document.getElementById('cal-export').addEventListener('click', exportJSON);
 
         const importInput = document.createElement('input');
@@ -91,12 +93,22 @@
         document.getElementById('cal-import').addEventListener('click', () => importInput.click());
 
         render();
-        setInterval(renderNowLine, 60000);
+        setInterval(renderNowLine, 1000);
 
         let resizeTimer = null;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => render(), 120);
+        });
+
+        // Press q to return home (when in calendar and not typing in the console)
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'q' && e.key !== 'Q') return;
+            if (!document.body.classList.contains('view-calendar')) return;
+            if (window.devConsole?.pendingPrompt) return;
+            const active = document.activeElement;
+            if (active && window.devConsole?.contains(active)) return;
+            goHome();
         });
     }
 
@@ -108,7 +120,6 @@
         setTimeout(scrollToNow, 480);
     }
 
-    /* --- Attach to Calendar --- */
     Calendar.init     = init;
     Calendar.show     = show;
     Calendar.flashError = flashError;

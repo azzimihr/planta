@@ -5,8 +5,10 @@ Calendar.render = (() => {
         fmtTime, fmtDateHuman, fmtDateISO,
         getState, getWeekStart, effectiveColor, getDistance,
     } = Calendar;
+    let renderedDate = null;
 
     function render() {
+        renderedDate = fmtDateISO(new Date());
         renderHeader();
         renderGrid();
         renderLegend();
@@ -29,9 +31,6 @@ Calendar.render = (() => {
         const state = getState();
         const ws = getWeekStart();
 
-        /* Map<colorKey, Set<label>>.
-         * Label = template name if the event came from a template, else event name.
-         * Duplicates collapse, so N events from one template render as one entry. */
         const buckets = new Map();
         const addToBucket = (ev) => {
             const c = effectiveColor(ev);
@@ -52,7 +51,6 @@ Calendar.render = (() => {
 
         if (buckets.size === 0) { el.innerHTML = ''; return; }
 
-        /* Sort: explicit colors alphabetically, "default" last. */
         const keys = [...buckets.keys()].sort((a, b) => {
             if (a === 'default') return 1;
             if (b === 'default') return -1;
@@ -89,7 +87,7 @@ Calendar.render = (() => {
         return n;
     }
 
-    function renderGrid() {
+        function renderGrid() {
         const state = getState();
         const ws = getWeekStart();
         const grid = document.getElementById('cal-grid');
@@ -97,9 +95,10 @@ Calendar.render = (() => {
         const scrollEl = document.getElementById('cal-scroll');
         if (!grid || !dayHead || !scrollEl) return;
 
-        const { startHour, endHour } = state.view;
+        const { startHour, endHour, visibleDays = [1, 2, 3, 4, 5, 6, 7] } = state.view;
         const totalHours = endHour - startHour;
 
+        // --- Dynamic Hour Height ---
         const headH = dayHead.offsetHeight || 44;
         const availH = (scrollEl.clientHeight || 0) - headH;
         const cssBase = parseFloat(
@@ -112,17 +111,22 @@ Calendar.render = (() => {
 
         grid.style.setProperty('--cal-hour-height', hourPx + 'px');
 
+        // --- Dynamic Column Grid ---
+        const gridCols = `var(--cal-gutter) repeat(${visibleDays.length}, 1fr)`;
+        grid.style.gridTemplateColumns = gridCols;
+        dayHead.style.gridTemplateColumns = gridCols;
+
         const dayNames = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
         const today = new Date();
         const todayISO = fmtDateISO(today);
 
         /* --- Pinned day headers --- */
         let headHtml = '<div class="cal-head cal-head-corner"></div>';
-        for (let i = 0; i < 7; i++) {
+        for (const dow of visibleDays) {
             const date = new Date(ws);
-            date.setDate(date.getDate() + i);
+            date.setDate(date.getDate() + (dow - 1)); // dow 1 = Monday
             const isToday = fmtDateISO(date) === todayISO;
-            headHtml += `<div class="cal-head ${isToday ? 'is-today' : ''}">${dayNames[i]} ${date.getDate()}</div>`;
+            headHtml += `<div class="cal-head ${isToday ? 'is-today' : ''}">${dayNames[dow - 1]} ${date.getDate()}</div>`;
         }
         dayHead.innerHTML = headHtml;
 
@@ -136,12 +140,13 @@ Calendar.render = (() => {
         const inWeek = countEventsInWeek();
         const emptyOverlay = inWeek === 0 ? '<div class="cal-empty">no events this week</div>' : '';
 
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < visibleDays.length; i++) {
+            const dow = visibleDays[i];
             const date = new Date(ws);
-            date.setDate(date.getDate() + i);
-            const dow = i + 1;
+            date.setDate(date.getDate() + (dow - 1));
             const dateISO = fmtDateISO(date);
             const isToday = dateISO === todayISO;
+            
             const events = collectEvents(dateISO, dow);
             computeTravel(events);
             markOverlaps(events);
@@ -163,6 +168,15 @@ Calendar.render = (() => {
                 const color = effectiveColor(ev) || 'var(--cal-accent)';
                 const cls = ev.isOverlapping ? 'cal-event is-overlapping' : 'cal-event';
 
+                // Fetch items from the template for the tooltip
+                let itemsHtml = '';
+                if (ev.template && state.templates[ev.template]) {
+                    const t = state.templates[ev.template];
+                    if (t.items && t.items.length > 0) {
+                        itemsHtml = `<div class="cal-event-items">items: ${t.items.join(', ')}</div>`;
+                    }
+                }
+
                 html += `<div class="${cls}" style="top:${top}px;height:${height}px;--ev-color:${color}">`;
                 if (travelPx > 0) {
                     const showLabel = travelPx >= 16;
@@ -173,10 +187,16 @@ Calendar.render = (() => {
                     }
                     html += `</div>`;
                 }
+                
                 html += `<div class="cal-event-body">`;
+                html += `<div class="cal-event-dot"></div>`;
+                html += `<div class="cal-event-header">`;
                 html += `<span class="cal-event-name">${ev.name}</span>`;
-                html += `<span class="cal-event-time">${fmtTime(ev.start)} - ${fmtTime(ev.end)}</span>`;
-                html += `</div></div>`;
+                html += `<span class="cal-event-time">${fmtTime(ev.start)}</span>`;
+                html += `</div>`;
+                html += `</div>`;
+                if (itemsHtml) html += itemsHtml;
+                html += `</div>`;
             }
 
             html += '</div>';
@@ -220,19 +240,47 @@ Calendar.render = (() => {
     }
 
     function renderNowLine() {
-        const state = getState();
+        const state = getState(); // <--- This was missing!
         const now = new Date();
-        const minutes = now.getHours() * 60 + now.getMinutes();
+        const todayISO = fmtDateISO(now);
+
+        const todayDow = now.getDay() === 0 ? 7 : now.getDay();
+        
+        const visibleDays = state.view.visibleDays || [1,2,3,4,5,6,7];
+        if (!visibleDays.includes(todayDow)) return;
+        // Catch midnight rollover and redraw the grid
+        if (renderedDate && renderedDate !== todayISO) {
+            render(); 
+            return;
+        }
+
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+        
+        const currentMinutes = hours * 60 + minutes;
         const { startHour, endHour } = state.view;
-        if (minutes < startHour * 60 || minutes > endHour * 60) return;
+        
+        const line = document.querySelector('.cal-col.is-today .cal-nowline');
+        if (!line) return;
+
+        // Hide if current time is outside the visible hours
+        if (currentMinutes < startHour * 60 || currentMinutes > endHour * 60) {
+            line.style.display = 'none';
+            return;
+        }
+
+        // Include seconds for continuous, smooth movement
+        const totalMinutes = currentMinutes + seconds / 60;
         const grid = document.getElementById('cal-grid');
         const hourPx = parseFloat(
             grid?.style.getPropertyValue('--cal-hour-height') ||
             getComputedStyle(document.documentElement).getPropertyValue('--cal-hour-height')
         ) || 72;
-        const top = (minutes - startHour * 60) * (hourPx / 60);
-        const line = document.querySelector('.cal-col.is-today .cal-nowline');
-        if (line) line.style.top = top + 'px';
+        
+        const top = (totalMinutes - startHour * 60) * (hourPx / 60);
+        line.style.display = 'block';
+        line.style.top = top + 'px';
     }
 
     function scrollToNow() {

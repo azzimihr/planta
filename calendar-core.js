@@ -10,7 +10,11 @@ const Calendar = (() => {
         templates: {},
         weekly: [],
         dated: [],
-        view: { startHour: 4, endHour: 22 },
+        view: {
+            startHour: 4,
+            endHour: 22,
+            visibleDays: [1, 2, 3, 4, 5, 6, 7]
+        },
     });
 
     let state = DEFAULT_STATE();
@@ -19,9 +23,6 @@ const Calendar = (() => {
 
     class ParseError extends Error {}
 
-    /* Time: [1-12 | a|b|c] [.MM] [a|p]?
-     * MM: 1 digit (tens, 0-5) or 2 digits (literal 00-55, must be multiple of 5).
-     * If no a/p: 7..c are AM (7:00..12:00), 1..6 are PM (13:00..18:00). */
     const RE_TIME  = /^(1[0-2]|[1-9]|[abc])(?:\.([0-9]{1,2}))?([ap])?$/;
     const RE_DIST  = /^(\d{1,2})(?:\.([0-9]{1,2}))?$/;
     const RE_DAYS  = /^w(\d(?:,\d)*)$/;
@@ -29,10 +30,10 @@ const Calendar = (() => {
     const RE_COLOR = /^[0-9a-f]{3}$/;
     const RE_LOC   = /^[a-z0-9_]{1,20}$/i;
     const RE_NAME  = /^[a-z0-9_]{1,20}$/i;
+    const RE_ITEM  = /^[a-z0-9_]{1,30}$/i;
     const RE_VIEW  = /^(\d{1,2})-(\d{1,2})$/;
     const RE_COMPACT = /^[0-9]+$/;
 
-    /* --- Parsers --- */
     function parseTime(s) {
         const m = RE_TIME.exec(s);
         if (!m) throw new ParseError(`invalid time: '${s}'`);
@@ -62,7 +63,6 @@ const Calendar = (() => {
             if (suffix === 'a') hour24 = (h === 12) ? 0  : h;
             else                hour24 = (h === 12) ? 12 : h + 12;
         } else {
-            /* Auto-deduce: 7..12 -> AM, 1..6 -> PM */
             if (h >= 7 && h <= 12)      hour24 = h;
             else if (h >= 1 && h <= 6)  hour24 = h + 12;
             else                        throw new ParseError(`cannot deduce am/pm for hour ${h}`);
@@ -105,17 +105,13 @@ const Calendar = (() => {
         return days;
     }
 
-    /* Compact: sorted ascending weekday digits -> weekly;
-     * otherwise 6-digit -> date. */
     function parseDaysOrDate(s) {
         if (!RE_COMPACT.test(s)) throw new ParseError(`invalid day/date selector: '${s}'`);
-
         const allWeekday = /^[1-7]+$/.test(s);
         let sorted = true;
         for (let i = 1; i < s.length; i++) {
             if (s[i] < s[i-1]) { sorted = false; break; }
         }
-
         if (allWeekday && sorted) {
             const days = [...new Set(s.split('').map(d => parseInt(d, 10)))].sort((a,b)=>a-b);
             return { type: 'weekly', value: days };
@@ -147,6 +143,10 @@ const Calendar = (() => {
         if (!RE_NAME.test(s)) throw new ParseError(`invalid name: '${s}'`);
         return s;
     }
+    function parseItem(s) {
+        if (!RE_ITEM.test(s)) throw new ParseError(`invalid item: '${s}'`);
+        return s;
+    }
     function parseViewRange(s) {
         const m = RE_VIEW.exec(s);
         if (!m) throw new ParseError(`invalid view: '${s}'`);
@@ -157,7 +157,21 @@ const Calendar = (() => {
         return [start, end];
     }
 
-    /* --- Formatters --- */
+    function parseVisibleDays(s) {
+        if (/^[1-7]-[1-7]$/.test(s)) {
+            const [a, b] = s.split('-').map(Number);
+            const start = Math.min(a, b);
+            const end = Math.max(a, b);
+            const days = [];
+            for (let i = start; i <= end; i++) days.push(i);
+            return days;
+        }
+        if (/^[1-7]+$/.test(s)) {
+            return [...new Set(s.split('').map(Number))].sort((a,b)=>a-b);
+        }
+        throw new ParseError(`invalid days format: '${s}'`);
+    }
+
     function fmtTime(min) {
         return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
     }
@@ -169,7 +183,6 @@ const Calendar = (() => {
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    /* --- Helpers --- */
     function distanceKey(a, b) { return [a, b].sort().join('|'); }
     function getDistance(a, b) {
         if (a === b) return 0;
@@ -236,13 +249,12 @@ const Calendar = (() => {
     }
 
     return {
-        VERSION,
-        ParseError,
-        DEFAULT_STATE,
+        VERSION, ParseError, DEFAULT_STATE,
 
         parseTime, parseRange, parseDistance,
         parseDays, parseDaysOrDate, parseDate,
-        parseColor, parseLocation, parseName, parseViewRange,
+        parseColor, parseLocation, parseName, parseItem, parseViewRange,
+        parseVisibleDays,
 
         fmtTime, fmtDateHuman, fmtDateISO,
 

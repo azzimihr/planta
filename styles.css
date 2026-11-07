@@ -255,3 +255,7 @@ body.view-calendar {
 .shape {
     transition: background 0.6s ease;
 }
+
+#kbd-console {
+    cursor: pointer;
+}
