@@ -10,6 +10,7 @@ const Calendar = (() => {
         templates: {},
         weekly: [],
         dated: [],
+        overrides: {},
         view: {
             startHour: 4,
             endHour: 22,

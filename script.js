@@ -140,6 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
     dc.registerCommand('time', run((range) => Calendar.cmd.setView(range)));
 
     dc.registerCommand('days', run((str) => Calendar.cmd.setDays(str)));
+    dc.registerCommand('week', run((str) => Calendar.cmd.setDays(str))); // <--- NEW ALIAS
+    
+    dc.registerCommand('or',       run((...a) => Calendar.cmd.addOverride(a)));
+    dc.registerCommand('override', run((...a) => Calendar.cmd.addOverride(a)));
+    dc.registerCommand('restore', run((...a) => Calendar.cmd.restoreOverride(a)));
     // --- Help ---
     const HELP = {
         distance: [
@@ -241,11 +246,26 @@ document.addEventListener('DOMContentLoaded', () => {
         ].join('\n'),
 
         days: [
-        'days <days>',
-        '',
-        '  set which weekdays are visible.',
-        '  formats: 1357 (list of sorted numbers) or 1-4 (range).',
-        '  example: days 1-5',
+            'days <days>',
+            'week <days>     (alias)',
+            '',
+            '  set which weekdays are visible.',
+            '  formats: 1357 (sorted list) or 1-4 (range).',
+            '  example: days 1-5',
+        ].join('\n'),
+
+        or: [
+            'or <date> [events...]',
+            'override <date> [events...]',
+            '',
+            '  disable recurring events for specific dates.',
+            '  <date> can be a single date (231227) or a range (231227-271227).',
+            '  if no events are listed, it disables all current recurring events for that day.',
+            '',
+            '  examples:',
+            '    or 231227           (disables everything on Wed, Dec 23)',
+            '    or 231227 ev1 ev2   (disables only ev1 and ev2)',
+            '    override 231227-271227',
         ].join('\n'),
 
         help: [
@@ -253,7 +273,21 @@ document.addEventListener('DOMContentLoaded', () => {
             '',
             '  list commands, or show help for a specific one.',
         ].join('\n'),
+
+        restore: [
+            'restore <date|range> [events...]',
+            '',
+            '  remove overrides for specific dates.',
+            '  <date> can be a single date (231227) or a range (231227-271227).',
+            '  if no events are listed, it removes all overrides for that day.',
+            '',
+            '  examples:',
+            '    restore 231227           (restores everything on Wed, Dec 23)',
+            '    restore 231227 ev1 ev3   (restores only ev1 and ev3)',
+            '    restore 231227-271227',
+        ].join('\n'),
     };
+    
 
     dc.registerCommand('help', (...args) => {
         if (args.length === 0) {

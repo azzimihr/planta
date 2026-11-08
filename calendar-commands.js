@@ -330,6 +330,140 @@ Calendar.cmd = (() => {
         ));
     }
 
+    function addOverride(args) {
+        const state = getState();
+        if (!state.overrides) state.overrides = {};
+        if (args.length === 0) throw new ParseError(`usage: or <date|range> [events...]`);
+        
+        const dateArg = args[0];
+        const evNames = args.slice(1);
+        
+        let dates = [];
+        if (dateArg.includes('-')) {
+            const [startStr, endStr] = dateArg.split('-');
+            const startISO = parseDate('d' + startStr);
+            const endISO = parseDate('d' + endStr);
+            
+            const [sy, sm, sd] = startISO.split('-').map(Number);
+            const [ey, em, ed] = endISO.split('-').map(Number);
+            
+            let curr = new Date(sy, sm - 1, sd);
+            const end = new Date(ey, em - 1, ed);
+            
+            if (curr > end) throw new Error('start date must be before end date');
+            
+            while (curr <= end) {
+                dates.push(fmtDateISO(curr));
+                curr.setDate(curr.getDate() + 1);
+            }
+        } else {
+            dates.push(parseDate('d' + dateArg));
+        }
+
+        for (const dStr of dates) {
+            const [y, m, d] = dStr.split('-').map(Number);
+            const dow = new Date(y, m - 1, d).getDay() || 7; // 1-7 (mon-sun)
+            
+            if (!state.overrides[dStr]) state.overrides[dStr] = [];
+            const existing = new Set(state.overrides[dStr]);
+            
+            if (evNames.length === 0) {
+                // Disable all recurring events currently scheduled for this day
+                for (const ev of state.weekly) {
+                    if (ev.days.includes(dow)) existing.add(ev.id);
+                }
+            } else {
+                // Disable specific events
+                for (const name of evNames) {
+                    const ev = findEvent(name);
+                    if (!ev) throw new Error(`event not found: ${name}`);
+                    existing.add(ev.id);
+                }
+            }
+            state.overrides[dStr] = [...existing];
+            if (state.overrides[dStr].length === 0) {
+                delete state.overrides[dStr];
+            }
+        }
+        save(); rerender();
+    }
+
+    function restoreOverride(args) {
+        const state = getState();
+        if (!state.overrides) state.overrides = {};
+        if (args.length === 0) throw new ParseError(`usage: restore <date|range> [events...]`);
+        
+        const dateArg = args[0];
+        const evNames = args.slice(1);
+        
+        let dates = [];
+        if (dateArg.includes('-')) {
+            const [startStr, endStr] = dateArg.split('-');
+            const startISO = parseDate('d' + startStr);
+            const endISO = parseDate('d' + endStr);
+            
+            const [sy, sm, sd] = startISO.split('-').map(Number);
+            const [ey, em, ed] = endISO.split('-').map(Number);
+            
+            let curr = new Date(sy, sm - 1, sd);
+            const end = new Date(ey, em - 1, ed);
+            
+            if (curr > end) throw new Error('start date must be before end date');
+            
+            while (curr <= end) {
+                dates.push(fmtDateISO(curr));
+                curr.setDate(curr.getDate() + 1);
+            }
+        } else {
+            dates.push(parseDate('d' + dateArg));
+        }
+
+        const dc = window.devConsole;
+        let anyChange = false;
+
+        for (const dStr of dates) {
+            if (!state.overrides[dStr]) {
+                // If they specified events, report they weren't overridden
+                if (evNames.length > 0) {
+                    for (const name of evNames) {
+                        dc.print(`info: ${name} was not overridden on ${dStr}`);
+                    }
+                }
+                continue;
+            }
+            
+            if (evNames.length === 0) {
+                delete state.overrides[dStr];
+                dc.print(`restored: all overrides cleared for ${dStr}`);
+                anyChange = true;
+            } else {
+                for (const name of evNames) {
+                    const ev = findEvent(name);
+                    if (!ev) {
+                        dc.print(`info: event '${name}' not found`);
+                        continue;
+                    }
+                    
+                    const idx = state.overrides[dStr].indexOf(ev.id);
+                    if (idx === -1) {
+                        dc.print(`info: ${name} was not overridden on ${dStr}`);
+                    } else {
+                        state.overrides[dStr].splice(idx, 1);
+                        dc.print(`restored: ${name} on ${dStr}`);
+                        anyChange = true;
+                    }
+                }
+                if (state.overrides[dStr].length === 0) {
+                    delete state.overrides[dStr];
+                }
+            }
+        }
+        
+        if (anyChange) {
+            save(); rerender();
+        }
+    }
+
     return {
         addDistance, addTemplate, addEvent, addTemplated, addTemplatedCompact,
         item,
@@ -337,5 +471,6 @@ Calendar.cmd = (() => {
         deleteEvent, deleteTemplate, setView, setDays,
         printEvent, printTemplate, printDistances,
         printAllTemplates, printAllEvents,
+        addOverride, restoreOverride
     };
 })();

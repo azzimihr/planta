@@ -208,8 +208,16 @@ Calendar.render = (() => {
     function collectEvents(dateISO, dow) {
         const state = getState();
         const out = [];
-        for (const ev of state.weekly) if (ev.days.includes(dow)) out.push({ ...ev, kind: 'weekly' });
-        for (const ev of state.dated)  if (ev.date === dateISO) out.push({ ...ev, kind: 'dated' });
+        const overriddenIds = state.overrides?.[dateISO] || [];
+        
+        for (const ev of state.weekly) {
+            if (ev.days.includes(dow) && !overriddenIds.includes(ev.id)) {
+                out.push({ ...ev, kind: 'weekly' });
+            }
+        }
+        for (const ev of state.dated) {
+            if (ev.date === dateISO) out.push({ ...ev, kind: 'dated' });
+        }
         out.sort((a, b) => {
             if (a.start !== b.start) return a.start - b.start;
             if (a.kind !== b.kind) return a.kind === 'weekly' ? -1 : 1;
