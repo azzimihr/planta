@@ -4,6 +4,7 @@ Calendar.cmd = (() => {
     const {
         ParseError, parseLocation, parseDistance, parseName, parseDate,
         parseDays, parseDaysOrDate, parseColor, parseItem, parseRange, parseViewRange,
+        parseTime, parseDuration,
         fmtTime, getState, save, rerender, findEvent,
         distanceKey, effectiveColor, nextEventId,
     } = Calendar;
@@ -26,23 +27,24 @@ Calendar.cmd = (() => {
 
     function addTemplate(args) {
         const state = getState();
-        if (args.length < 2 || args.length > 3) throw new ParseError(`usage: template <name> <location> [color]`);
+        if (args.length !== 4) throw new ParseError(`usage: template <name> <location> <color> <duration>`);
         const name = parseName(args[0]);
         const location = parseLocation(args[1]);
-        const color = args[2] ? parseColor(args[2]) : null;
+        const color = parseColor(args[2]);
+        const duration = parseDuration(args[3]);
         if (state.templates[name]) throw new Error(`template already exists: ${name}`);
-        state.templates[name] = { location, color, items: [] };
+        state.templates[name] = { location, color, duration, items: [] };
         save();
     }
 
-    function addEvent(args) {
+        function addEvent(args) {
         const state = getState();
         if (args.length < 4 || args.length > 5)
-            throw new ParseError(`usage: add <w|d selector> <range> <name> <location> [color]`);
-        const [selector, rangeStr, nameStr, locStr, colorStr] = args;
+                throw new ParseError(`usage: add <w|d selector> <range> <location> <name> [color]`);
+            const [selector, rangeStr, locStr, nameStr, colorStr] = args;
         const name = parseName(nameStr);
         const location = parseLocation(locStr);
-        const color = colorStr ? parseColor(colorStr) : null;
+        const color = colorStr ? parseColor(colorStr) : Calendar.randomColor();
         const [start, end] = parseRange(rangeStr);
         if (findEvent(name)) throw new Error(`event name already used: ${name}`);
         const id = nextEventId();
@@ -61,17 +63,18 @@ Calendar.cmd = (() => {
 
     function addTemplated(args) {
         const state = getState();
-        if (args.length < 4 || args.length > 5)
-            throw new ParseError(`usage: addt <template> <w|d selector> <range> <name> [color]`);
-        const [tmplName, selector, rangeStr, nameStr, colorStr] = args;
+        if (args.length !== 4)
+            throw new ParseError(`usage: addt <w|d selector> <start> <template> <name>`);
+        const [selector, startStr, tmplName, nameStr] = args;
         const t = state.templates[tmplName];
         if (!t) throw new Error(`template not found: ${tmplName}`);
+        if (!Number.isFinite(t.duration)) throw new Error(`template has no duration: ${tmplName}`);
         const name = parseName(nameStr);
-        const color = colorStr ? parseColor(colorStr) : null;
-        const [start, end] = parseRange(rangeStr);
+        const start = parseTime(startStr);
+        if (start + t.duration > 24 * 60) throw new ParseError(`event exceeds midnight: '${startStr}'`);
         if (findEvent(name)) throw new Error(`event name already used: ${name}`);
         const id = nextEventId();
-        const base = { id, name, start, end, location: t.location, color, template: tmplName };
+        const base = { id, name, start, template: tmplName };
 
         if (selector.startsWith('w')) {
             base.days = parseDays(selector);
@@ -87,18 +90,19 @@ Calendar.cmd = (() => {
 
     function addTemplatedCompact(args) {
         const state = getState();
-        if (args.length < 4 || args.length > 5)
-            throw new ParseError(`usage: t <template> <days|date> <range> <name> [color]`);
-        const [tmplName, compact, rangeStr, nameStr, colorStr] = args;
+        if (args.length !== 4)
+            throw new ParseError(`usage: t <days|date> <start> <template> <name>`);
+        const [compact, startStr, tmplName, nameStr] = args;
         const t = state.templates[tmplName];
         if (!t) throw new Error(`template not found: ${tmplName}`);
+        if (!Number.isFinite(t.duration)) throw new Error(`template has no duration: ${tmplName}`);
         const name = parseName(nameStr);
-        const color = colorStr ? parseColor(colorStr) : null;
-        const [start, end] = parseRange(rangeStr);
+        const start = parseTime(startStr);
+        if (start + t.duration > 24 * 60) throw new ParseError(`event exceeds midnight: '${startStr}'`);
         if (findEvent(name)) throw new Error(`event name already used: ${name}`);
         const parsed = parseDaysOrDate(compact);
         const id = nextEventId();
-        const base = { id, name, start, end, location: t.location, color, template: tmplName };
+        const base = { id, name, start, template: tmplName };
 
         if (parsed.type === 'weekly') {
             base.days = parsed.value;
@@ -107,6 +111,37 @@ Calendar.cmd = (() => {
             base.date = parsed.value;
             state.dated.push(base);
         }
+        save(); rerender();
+    }
+
+    function addCompact(args) {
+        const state = getState();
+        if (args.length < 4 || args.length > 5)
+            throw new ParseError(`usage: a <days|date> <range> <location> <name> [color]`);
+        const [compact, rangeStr, locStr, nameStr, colorStr] = args;
+        const name = parseName(nameStr);
+        const location = parseLocation(locStr);
+        const color = colorStr ? parseColor(colorStr) : Calendar.randomColor();
+        const [start, end] = parseRange(rangeStr);
+        if (findEvent(name)) throw new Error(`event name already used: ${name}`);
+        const parsed = parseDaysOrDate(compact);
+        const id = nextEventId();
+        const base = { id, name, start, end, location, color };
+
+        if (parsed.type === 'weekly') {
+            base.days = parsed.value;
+            state.weekly.push(base);
+        } else {
+            base.date = parsed.value;
+            state.dated.push(base);
+        }
+        save(); rerender();
+    }
+
+    function setDays(str) {
+        const state = getState();
+        if (!str) str = '1-7';
+        state.view.visibleDays = Calendar.parseVisibleDays(str);
         save(); rerender();
     }
 
@@ -188,10 +223,29 @@ Calendar.cmd = (() => {
     function deleteEvent(name) {
         const state = getState();
         const wi = state.weekly.findIndex(e => e.name === name);
-        if (wi >= 0) { state.weekly.splice(wi, 1); save(); rerender(); return; }
+        if (wi >= 0) {
+            const eventId = state.weekly[wi].id;
+            state.weekly.splice(wi, 1);
+            removeLengthOverrides(state, eventId);
+            save(); rerender(); return;
+        }
         const di = state.dated.findIndex(e => e.name === name);
-        if (di >= 0) { state.dated.splice(di, 1); save(); rerender(); return; }
+        if (di >= 0) {
+            const eventId = state.dated[di].id;
+            state.dated.splice(di, 1);
+            removeLengthOverrides(state, eventId);
+            save(); rerender(); return;
+        }
         throw new Error(`event not found: ${name}`);
+    }
+
+    function removeLengthOverrides(state, eventId) {
+        if (!eventId || !state.lengthOverrides) return;
+        for (const date of Object.keys(state.lengthOverrides)) {
+            delete state.lengthOverrides[date][eventId];
+            if (Object.keys(state.lengthOverrides[date]).length === 0)
+                delete state.lengthOverrides[date];
+        }
     }
 
     function deleteTemplate(name) {
@@ -199,12 +253,40 @@ Calendar.cmd = (() => {
         if (!state.templates[name]) throw new Error(`template not found: ${name}`);
         for (const ev of [...state.weekly, ...state.dated]) {
             if (ev.template === name) {
-                if (!ev.color) ev.color = state.templates[name].color;
+                ev.location = state.templates[name].location;
+                ev.color = state.templates[name].color;
+                ev.duration = state.templates[name].duration;
+                ev.end = ev.start + ev.duration;
                 delete ev.template;
             }
         }
+
         delete state.templates[name];
         save();
+    }
+
+    function setLength(args) {
+        if (args.length !== 3) throw new ParseError(`usage: length <event> <date> <duration>`);
+        const state = getState();
+        const [eventName, dateArg, durationArg] = args;
+        const ev = findEvent(eventName);
+        if (!ev) throw new Error(`event not found: ${eventName}`);
+        if (!ev.template || !state.templates[ev.template])
+            throw new Error(`event is not templated: ${eventName}`);
+
+        const date = parseDate('d' + dateArg);
+        const [year, month, day] = date.split('-').map(Number);
+        const dow = new Date(year, month - 1, day).getDay() || 7;
+        const occurs = ev.days ? ev.days.includes(dow) : ev.date === date;
+        if (!occurs) throw new Error(`event does not occur on ${date}: ${eventName}`);
+
+        const duration = parseDuration(durationArg);
+        if (ev.start + duration > 24 * 60)
+            throw new ParseError(`event exceeds midnight: '${durationArg}'`);
+        if (!state.lengthOverrides) state.lengthOverrides = {};
+        if (!state.lengthOverrides[date]) state.lengthOverrides[date] = {};
+        state.lengthOverrides[date][ev.id] = duration;
+        save(); rerender();
     }
 
     function setView(rangeStr) {
@@ -212,12 +294,6 @@ Calendar.cmd = (() => {
         const [start, end] = parseViewRange(rangeStr);
         state.view.startHour = start;
         state.view.endHour = end;
-        save(); rerender();
-    }
-
-    function setDays(str) {
-        const state = getState();
-        state.view.visibleDays = Calendar.parseVisibleDays(str);
         save(); rerender();
     }
 
@@ -239,6 +315,9 @@ Calendar.cmd = (() => {
         const state = getState();
         const ev = findEvent(name);
         if (!ev) throw new Error(`event not found: ${name}`);
+        const template = ev.template && state.templates[ev.template];
+        const duration = template?.duration ?? ev.duration ?? (ev.end - ev.start);
+        const location = template?.location ?? ev.location;
         const isWeekly = !!ev.days;
         const dayStr = isWeekly ? ev.days.map(d => 'w' + d).join(', ') : ev.date;
 
@@ -255,8 +334,8 @@ Calendar.cmd = (() => {
             `ev         ${ev.name}`,
             `  type       ${isWeekly ? 'weekly' : 'dated'}`,
             `  ${isWeekly ? 'days       ' + dayStr : 'date       ' + dayStr}`,
-            `  time       ${fmtTime(ev.start)} - ${fmtTime(ev.end)}`,
-            `  location   ${ev.location}`,
+            `  time       ${fmtTime(ev.start)} - ${fmtTime(ev.start + duration)}`,
+            `  location   ${location}`,
             `  color      ${colorLine}`,
         ].join('\n');
         window.devConsole.print(lines);
@@ -271,7 +350,8 @@ Calendar.cmd = (() => {
         const lines = [
             `template   ${name}`,
             `  location   ${t.location}`,
-            `  color      ${t.color || '(none)'}`,
+            `  color      ${t.color}`,
+            `  duration   ${fmtTime(t.duration)}`,
             `  items      ${items}`,
             `  used by    ${users.length ? users.join(', ') : '(none)'}`,
         ].join('\n');
@@ -298,11 +378,12 @@ Calendar.cmd = (() => {
             return [
                 n,
                 t.location,
-                t.color || '(none)',
+                t.color,
+                Number.isFinite(t.duration) ? fmtTime(t.duration) : '(none)',
                 (t.items || []).join(', ') || '(none)',
             ];
         });
-        window.devConsole.print(fmtTable(['name', 'location', 'color', 'items'], rows));
+        window.devConsole.print(fmtTable(['name', 'location', 'color', 'duration', 'items'], rows));
     }
 
     function printAllEvents() {
@@ -314,13 +395,16 @@ Calendar.cmd = (() => {
         if (!all.length) { window.devConsole.print('(no events)'); return; }
         all.sort((a, b) => a.name.localeCompare(b.name));
         const rows = all.map(e => {
+            const template = e.template && state.templates[e.template];
+            const end = template ? e.start + template.duration : e.end;
+            const location = template?.location ?? e.location;
             const when = e.days ? e.days.map(d => 'w' + d).join(',') : e.date;
             return [
                 e.name,
                 e.type,
                 when,
-                `${fmtTime(e.start)} - ${fmtTime(e.end)}`,
-                e.location,
+                `${fmtTime(e.start)} - ${fmtTime(end)}`,
+                location,
                 effectiveColor(e) || '(default)',
             ];
         });
@@ -464,13 +548,27 @@ Calendar.cmd = (() => {
         }
     }
 
+    function dumpAll() {
+        const state = getState();
+        state.distances = {};
+        state.templates = {};
+        state.weekly = [];
+        state.dated = [];
+        state.overrides = {};
+        state.lengthOverrides = {};
+        save();
+        rerender();
+    }
+
     return {
-        addDistance, addTemplate, addEvent, addTemplated, addTemplatedCompact,
+        addDistance, addTemplate, addEvent, addCompact, addTemplated, addTemplatedCompact,
         item,
         renameEvent,
         deleteEvent, deleteTemplate, setView, setDays,
         printEvent, printTemplate, printDistances,
         printAllTemplates, printAllEvents,
-        addOverride, restoreOverride
+        addOverride, restoreOverride,
+        setLength,
+        dumpAll
     };
 })();

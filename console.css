@@ -75,8 +75,8 @@ dev-console {
     transform: scale(0.92) translateY(-8px);
     pointer-events: none;
     transition:
-        opacity 0.2s ease,
-        transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity 0.15s ease,
+        transform 0.21s cubic-bezier(0.34, 1.56, 0.64, 1);
 
     box-shadow:
         16px 16px 40px rgba(0, 0, 0, 0.219),

@@ -82,6 +82,12 @@
         document.getElementById('cal-today').addEventListener('click', () => { goToday(); scrollToNow(); });
         document.getElementById('cal-back').addEventListener('click', goHome);
         document.getElementById('cal-export').addEventListener('click', exportJSON);
+        document.getElementById('cal-dump').addEventListener('click', () => {
+            if (window.confirm("are you sure you want to delete ALL calendar data? this cannot be undone.")) {
+                Calendar.cmd.dumpAll();
+                window.devConsole.print('all data dumped.', 'error'); // Optional: print to console so you see it
+            }
+        });
 
         const importInput = document.createElement('input');
         importInput.type = 'file';

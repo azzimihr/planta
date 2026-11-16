@@ -209,14 +209,28 @@ Calendar.render = (() => {
         const state = getState();
         const out = [];
         const overriddenIds = state.overrides?.[dateISO] || [];
+        const lengthOverrides = state.lengthOverrides?.[dateISO] || {};
+        const resolve = (ev, kind) => {
+            const resolved = { ...ev, kind };
+            const template = ev.template && state.templates[ev.template];
+            if (template) {
+                resolved.location = template.location;
+                resolved.color = template.color;
+                resolved.end = ev.start + template.duration;
+            }
+            if (lengthOverrides[ev.id] !== undefined) {
+                resolved.end = ev.start + lengthOverrides[ev.id];
+            }
+            return resolved;
+        };
         
         for (const ev of state.weekly) {
             if (ev.days.includes(dow) && !overriddenIds.includes(ev.id)) {
-                out.push({ ...ev, kind: 'weekly' });
+                out.push(resolve(ev, 'weekly'));
             }
         }
         for (const ev of state.dated) {
-            if (ev.date === dateISO) out.push({ ...ev, kind: 'dated' });
+            if (ev.date === dateISO) out.push(resolve(ev, 'dated'));
         }
         out.sort((a, b) => {
             if (a.start !== b.start) return a.start - b.start;

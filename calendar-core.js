@@ -11,6 +11,7 @@ const Calendar = (() => {
         weekly: [],
         dated: [],
         overrides: {},
+        lengthOverrides: {},
         view: {
             startHour: 4,
             endHour: 22,
@@ -25,15 +26,34 @@ const Calendar = (() => {
     class ParseError extends Error {}
 
     const RE_TIME  = /^(1[0-2]|[1-9]|[abc])(?:\.([0-9]{1,2}))?([ap])?$/;
+    const RE_DURATION = /^([0-9]{1,2}|[a-f])(?:\.([0-9]{1,2}))?$/i;
     const RE_DIST  = /^(\d{1,2})(?:\.([0-9]{1,2}))?$/;
     const RE_DAYS  = /^w(\d(?:,\d)*)$/;
-    const RE_DATE  = /^d(\d{2})(\d{2})(\d{2})$/;
+    const RE_DATE  = /^d(\d{2})(\d{2})(\d{2})?$/;
     const RE_COLOR = /^[0-9a-f]{3}$/;
     const RE_LOC   = /^[a-z0-9_]{1,20}$/i;
-    const RE_NAME  = /^[a-z0-9_]{1,20}$/i;
+    const RE_NAME  = /^[a-z0-9_.#]{1,20}$/i;
     const RE_ITEM  = /^[a-z0-9_]{1,30}$/i;
     const RE_VIEW  = /^(\d{1,2})-(\d{1,2})$/;
     const RE_COMPACT = /^[0-9]+$/;
+
+    function randomColor() {
+        const chars = '456789abcdef';
+        let hex = '#';
+        for (let i = 0; i < 3; i++) hex += chars[Math.floor(Math.random() * chars.length)];
+        return hex;
+    }
+
+    function parseDate(s) {
+        const m = RE_DATE.exec(s);
+        if (!m) throw new ParseError(`invalid date: '${s}'`);
+        const day = parseInt(m[1], 10), month = parseInt(m[2], 10);
+        let year = m[3] ? 2000 + parseInt(m[3], 10) : new Date().getFullYear();
+        const d = new Date(year, month - 1, day);
+        if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day)
+            throw new ParseError(`invalid date: '${s}'`);
+        return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    }
 
     function parseTime(s) {
         const m = RE_TIME.exec(s);
@@ -80,6 +100,35 @@ const Calendar = (() => {
         return [start, end];
     }
 
+    function parseDuration(s) {
+        const m = RE_DURATION.exec(s);
+        if (!m) throw new ParseError(`invalid duration: '${s}'`);
+
+        const hourText = m[1].toLowerCase();
+        const hours = /^[a-f]$/.test(hourText)
+            ? 10 + hourText.charCodeAt(0) - 'a'.charCodeAt(0)
+            : parseInt(hourText, 10);
+        if (hours > 23) throw new ParseError(`invalid duration: '${s}'`);
+
+        let minutes = 0;
+        if (m[2] !== undefined) {
+            if (m[2].length === 1) {
+                const digit = parseInt(m[2], 10);
+                if (digit > 5) throw new ParseError(`invalid duration: '${s}'`);
+                minutes = digit * 10;
+            } else {
+                minutes = parseInt(m[2], 10);
+                if (minutes > 59 || minutes % 5 !== 0)
+                    throw new ParseError(`invalid duration: '${s}'`);
+            }
+        }
+
+        const total = hours * 60 + minutes;
+        if (total <= 0 || total >= 24 * 60)
+            throw new ParseError(`invalid duration: '${s}'`);
+        return total;
+    }
+
     function parseDistance(s) {
         const m = RE_DIST.exec(s);
         if (!m) throw new ParseError(`invalid distance: '${s}'`);
@@ -117,21 +166,13 @@ const Calendar = (() => {
             const days = [...new Set(s.split('').map(d => parseInt(d, 10)))].sort((a,b)=>a-b);
             return { type: 'weekly', value: days };
         }
-        if (s.length === 6) {
+        if (s.length === 6 || s.length === 4) {
             return { type: 'dated', value: parseDate('d' + s) };
         }
         throw new ParseError(`invalid day/date selector: '${s}'`);
     }
 
-    function parseDate(s) {
-        const m = RE_DATE.exec(s);
-        if (!m) throw new ParseError(`invalid date: '${s}'`);
-        const day = parseInt(m[1], 10), month = parseInt(m[2], 10), year = 2000 + parseInt(m[3], 10);
-        const d = new Date(year, month - 1, day);
-        if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day)
-            throw new ParseError(`invalid date: '${s}'`);
-        return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    }
+
     function parseColor(s) {
         if (!RE_COLOR.test(s)) throw new ParseError(`invalid color: '${s}'`);
         return '#' + s[0]+s[0] + s[1]+s[1] + s[2]+s[2];
@@ -252,7 +293,7 @@ const Calendar = (() => {
     return {
         VERSION, ParseError, DEFAULT_STATE,
 
-        parseTime, parseRange, parseDistance,
+        parseTime, parseRange, parseDuration, parseDistance,
         parseDays, parseDaysOrDate, parseDate,
         parseColor, parseLocation, parseName, parseItem, parseViewRange,
         parseVisibleDays,
@@ -269,6 +310,6 @@ const Calendar = (() => {
 
         distanceKey, getDistance, findEvent, effectiveColor,
 
-        rerender,
+        rerender, randomColor
     };
 })();

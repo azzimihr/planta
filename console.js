@@ -1,6 +1,9 @@
 /* --- dev-console: draggable, toggleable, extensible dev console --- */
 
 class DevConsole extends HTMLElement {
+    static HISTORY_KEY = 'dashboard.console.history';
+    static MAX_HISTORY = 100;
+
     connectedCallback() {
         this.innerHTML = `
             <div class="console-titlebar">
@@ -23,8 +26,8 @@ class DevConsole extends HTMLElement {
         this.pendingPrompt = null;
 
         this.commands = {};
-        this.commandHistory = [];
-        this.historyIndex   = -1;
+        this.commandHistory = this._loadCommandHistory();
+        this.historyIndex   = this.commandHistory.length;
 
         this.registerCommand('clear', () => { this.historyEl.innerHTML = ''; });
         this.registerCommand('help',  () => {
@@ -67,7 +70,7 @@ class DevConsole extends HTMLElement {
                 const cmd = this.inputEl.value.trim();
                 if (cmd) {
                     this.execute(cmd);
-                    this.commandHistory.push(cmd);
+                    this._recordCommand(cmd);
                 }
                 this.historyIndex = this.commandHistory.length;
                 this.inputEl.value = '';
@@ -90,6 +93,41 @@ class DevConsole extends HTMLElement {
                 }
             }
         });
+    }
+
+    _loadCommandHistory() {
+        try {
+            const raw = localStorage.getItem(DevConsole.HISTORY_KEY);
+            if (!raw) return [];
+
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+
+            return parsed
+                .filter(command => typeof command === 'string' && command.trim())
+                .map(command => command.trim())
+                .slice(-DevConsole.MAX_HISTORY);
+        } catch (error) {
+            console.warn('[console] history load failed', error);
+            return [];
+        }
+    }
+
+    _recordCommand(command) {
+        const previous = this.commandHistory[this.commandHistory.length - 1];
+        if (previous !== command) this.commandHistory.push(command);
+        if (this.commandHistory.length > DevConsole.MAX_HISTORY) {
+            this.commandHistory.splice(0, this.commandHistory.length - DevConsole.MAX_HISTORY);
+        }
+
+        try {
+            localStorage.setItem(
+                DevConsole.HISTORY_KEY,
+                JSON.stringify(this.commandHistory)
+            );
+        } catch (error) {
+            console.warn('[console] history save failed', error);
+        }
     }
 
     _bindDrag() {

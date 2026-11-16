@@ -36,43 +36,58 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    function animate() {
-        mouseX += (targetX - mouseX) * 0.05;
-        mouseY += (targetY - mouseY) * 0.05;
-        const t = Date.now() * 0.001;
+        let lastFrameTime = 0;
+    const targetFPS = 30;
+    const frameInterval = 1000 / targetFPS; // ~33.33ms
 
-        shards.forEach(shard => {
-            const offset = parseFloat(shard.dataset.offset);
-            const hovered = shard.dataset.hover === 'true';
-            const baseRot = parseFloat(shard.dataset.baseRot);
-
-            const floatX = Math.sin(t * 1.1 + offset) * 25;
-            const floatY = Math.cos(t * 1.4 + offset) * 35;
-            const floatRot = Math.sin(t * 0.8 + offset) * 8;
-
-            const parX = mouseX * -45;
-            const parY = mouseY * -45;
-
-            let targetScale = hovered ? 1.12 : 1.0;
-            let hoverWobble = hovered ? Math.sin(t * 3) * 1.5 : 0;
-            let hoverPulse = hovered ? Math.sin(t * 2) * 0.01 : 0;
-
-            shard.dataset.currentScale = parseFloat(shard.dataset.currentScale) + (targetScale - parseFloat(shard.dataset.currentScale)) * 0.15;
-            const currentScale = parseFloat(shard.dataset.currentScale) + hoverPulse;
-
-            const finalRot = baseRot + floatRot + hoverWobble;
-            shard.style.transform = `translate3d(${floatX + parX}px, ${floatY + parY}px, 0) rotate(${finalRot}deg) scale(${currentScale})`;
-        });
-
-        shapes.forEach((shape, i) => {
-            const speed = (i + 1) * 25;
-            const rot = t * (i + 1) * 4;
-            shape.style.transform = `translate3d(${mouseX * speed}px, ${mouseY * speed}px, 0) rotate(${rot}deg)`;
-        });
-
+    function animate(timestamp) {
+        // Request the next frame immediately
         requestAnimationFrame(animate);
+
+        // Throttle the physics math to 30fps
+        if (timestamp - lastFrameTime < frameInterval) return;
+        lastFrameTime = timestamp;
+
+        // Only run the math if we are on the home screen
+        if (document.body.classList.contains('view-home')) {
+            // Use the precise timestamp for the math instead of Date.now()
+            const t = timestamp * 0.001; 
+
+            mouseX += (targetX - mouseX) * 0.05;
+            mouseY += (targetY - mouseY) * 0.05;
+
+            shards.forEach(shard => {
+                const offset = parseFloat(shard.dataset.offset);
+                const hovered = shard.dataset.hover === 'true';
+                const baseRot = parseFloat(shard.dataset.baseRot);
+
+                const floatX = Math.sin(t * 1.1 + offset) * 25;
+                const floatY = Math.cos(t * 1.4 + offset) * 35;
+                const floatRot = Math.sin(t * 0.8 + offset) * 8;
+
+                const parX = mouseX * -45;
+                const parY = mouseY * -45;
+
+                let targetScale = hovered ? 1.12 : 1.0;
+                let hoverWobble = hovered ? Math.sin(t * 3) * 1.5 : 0;
+                let hoverPulse = hovered ? Math.sin(t * 2) * 0.01 : 0;
+
+                shard.dataset.currentScale = parseFloat(shard.dataset.currentScale) + (targetScale - parseFloat(shard.dataset.currentScale)) * 0.15;
+                const currentScale = parseFloat(shard.dataset.currentScale) + hoverPulse;
+
+                const finalRot = baseRot + floatRot + hoverWobble;
+                shard.style.transform = `translate3d(${floatX + parX}px, ${floatY + parY}px, 0) rotate(${finalRot}deg) scale(${currentScale})`;
+            });
+
+            shapes.forEach((shape, i) => {
+                const speed = (i + 1) * 25;
+                const rot = t * (i + 1) * 4;
+                shape.style.transform = `translate3d(${mouseX * speed}px, ${mouseY * speed}px, 0) rotate(${rot}deg)`;
+            });
+        }
     }
-    animate();
+    // Start the loop (you don't need to pass a timestamp manually)
+    requestAnimationFrame(animate);
 
     // --- Backtick hint opens console ---
     document.getElementById('kbd-console')?.addEventListener('click', () => {
@@ -113,15 +128,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dc.registerCommand('distance', run((pair, dist) => Calendar.cmd.addDistance(pair, dist)));
     dc.registerCommand('template', run((...a) => Calendar.cmd.addTemplate(a)));
     dc.registerCommand('add',      run((...a) => Calendar.cmd.addEvent(a)));
+    dc.registerCommand('a', run((...a) => Calendar.cmd.addCompact(a)));
     dc.registerCommand('addt',     run((...a) => Calendar.cmd.addTemplated(a)));
     dc.registerCommand('t',        run((...a) => Calendar.cmd.addTemplatedCompact(a)));
     dc.registerCommand('item',     run((...a) => Calendar.cmd.item(a)));
+    dc.registerCommand('length',   run((...a) => Calendar.cmd.setLength(a)));
 
-    dc.registerCommand('del', run((kind, name) => {
-        if (kind === 'temp')     Calendar.cmd.deleteTemplate(name);
-        else if (kind === 'ev')  Calendar.cmd.deleteEvent(name);
-        else throw new Calendar.ParseError(`unknown del target: ${kind}`);
-    }));
+    dc.registerCommand('del', run((name) => Calendar.cmd.deleteTemplate(name)));
+    dc.registerCommand('rm',  run((name) => Calendar.cmd.deleteEvent(name)));
 
     dc.registerCommand('rename', run((from, to) => Calendar.cmd.renameEvent(from, to)));
     dc.registerCommand('mv',     run((from, to) => Calendar.cmd.renameEvent(from, to)));
@@ -145,6 +159,16 @@ document.addEventListener('DOMContentLoaded', () => {
     dc.registerCommand('or',       run((...a) => Calendar.cmd.addOverride(a)));
     dc.registerCommand('override', run((...a) => Calendar.cmd.addOverride(a)));
     dc.registerCommand('restore', run((...a) => Calendar.cmd.restoreOverride(a)));
+    dc.registerCommand('dump', () => {
+        window.devConsole.prompt('are you sure you want to delete ALL data? y/n', (yes) => {
+            if (yes) {
+                Calendar.cmd.dumpAll();
+                window.devConsole.print('all data dumped.', 'error');
+            } else {
+                window.devConsole.print('cancelled.');
+            }
+        });
+    });
     // --- Help ---
     const HELP = {
         distance: [
@@ -156,41 +180,61 @@ document.addEventListener('DOMContentLoaded', () => {
         ].join('\n'),
 
         template: [
-            'template <name> <location> [color]',
+            'template <name> <location> <color> <duration>',
             '',
             '  define a reusable template for events.',
-            '  color is optional 3-digit hex without #.',
-            '  example: template subj fax ba0',
+            '  color is a mandatory 3-digit hex without #.',
+            '  duration uses time notation, e.g. 0.2 or a.5.',
+            '  example: template temp2 fax 42f 0.4',
         ].join('\n'),
 
         add: [
-            'add w<days>   <range> <name> <location> [color]',
-            'add d<DDMMYY> <range> <name> <location> [color]',
+            'add w<days>   <range> <location> <name> [color]',
+            'add d<DDMMYY> <range> <location> <name> [color]',
             '',
             '  time: hour [1-12 | a|b|c] [.MM] [a|p]?',
             '  without a/p, 7..c are AM, 1..6 are PM.',
             '',
             '  examples:',
-            '    add w2,5 2.5p-4p MRS fax',
-            '    add d281126 3p-7.5p EXAM fax 555',
+            '    add w2,5 2.5p-4p fax MRS',
+            '    add d281126 3p-7.5p fax EXAM 555',
         ].join('\n'),
 
         addt: [
-            'addt <template> w<days>   <range> <name> [color]',
-            'addt <template> d<DDMMYY> <range> <name> [color]',
+            'addt w<days>   <start> <template> <name>',
+            'addt d<DDMMYY> <start> <template> <name>',
             '',
-            '  like add, but location comes from the template.',
-            '  compact variant: t <template> <days|date> <range> <name> [color]',
+            '  like add, but duration, color, and location come from the template.',
+            '  compact variant: t <days|date> <start> <template> <name>',
+        ].join('\n'),
+
+        a: [
+            'a <days|date> <range> <location> <name> [color]',
+            '',
+            '  compact add. no template.',
+            '  <days|date> can be sorted weekday digits (e.g. 135)',
+            '              or DDMM / DDMMYY date (e.g. 1711).',
+            '  if no color is provided, a random one is generated.',
+            '',
+            '  example: a 1711 b-c fax tens 256',
         ].join('\n'),
 
         t: [
-            't <template> <compact> <range> <name> [color]',
+            't <days|date> <start> <template> <name>',
             '',
             '  compact templated add.',
-            '  <compact>: sorted weekday digits (4, 45, 137, 1234567)',
-            '          or 6-digit DDMMYY date (281126).',
+            '  <days|date> can be sorted weekday digits (e.g. 45)',
+            '              or DDMM / DDMMYY date (e.g. 2811).',
             '',
-            '  example: t vezbe 45 b.4-1.1 ntp',
+            '  example: t 1410 b.35 temp2 ev7',
+        ].join('\n'),
+
+        length: [
+            'length <event> <date> <duration>',
+            '',
+            '  override a templated event length on one date.',
+            '  duration uses time notation, e.g. 0.25 or f.2.',
+            '  example: length ev7 1410 0.25',
         ].join('\n'),
 
         item: [
@@ -201,10 +245,15 @@ document.addEventListener('DOMContentLoaded', () => {
         ].join('\n'),
 
         del: [
-            'del temp <name>',
-            'del ev <name>',
+            'del <template>',
             '',
-            '  delete a template or an event.',
+            '  delete a template.',
+        ].join('\n'),
+
+        rm: [
+            'rm <event>',
+            '',
+            '  delete an event.',
         ].join('\n'),
 
         rename: [
@@ -286,6 +335,13 @@ document.addEventListener('DOMContentLoaded', () => {
             '    restore 231227 ev1 ev3   (restores only ev1 and ev3)',
             '    restore 231227-271227',
         ].join('\n'),
+
+        dump: [
+            'dump',
+            '',
+            '  delete all calendar data.',
+            '  wipes events, templates, distances, and overrides.',
+        ].join('\n'),
     };
     
 
@@ -296,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         let topic = args[0].toLowerCase();
+        if (topic === 'mv') topic = 'rename';
         if (topic === 'list' || topic === 'ls') topic = 'print';
         const text = HELP[topic];
         if (!text) { dc.print(`no help for '${topic}'`, 'error'); return; }
