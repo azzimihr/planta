@@ -3,7 +3,7 @@
 Calendar.render = (() => {
     const {
         fmtTime, fmtDateHuman, fmtDateISO,
-        getState, getWeekStart, effectiveColor, getDistance,
+        getState, getWeekStart, effectiveColor, getDistance, save,
     } = Calendar;
     let renderedDate = null;
 
@@ -189,7 +189,13 @@ Calendar.render = (() => {
                 }
                 
                 html += `<div class="cal-event-body">`;
-                html += `<div class="cal-event-dot"></div>`;
+                const alarmOn = ev.kind === 'weekly'
+                    ? ev.alarms?.[dow] === true
+                    : ev.alarm === true;
+                html += `<button class="cal-alarm ${alarmOn ? 'is-on' : ''}" ` +
+                    `type="button" data-event-id="${ev.id}" data-event-day="${dow}" ` +
+                    `data-event-date="${dateISO}" aria-label="${alarmOn ? 'disable' : 'enable'} alarm" ` +
+                    `title="${alarmOn ? 'disable' : 'enable'} alarm"></button>`;
                 html += `<div class="cal-event-header">`;
                 html += `<span class="cal-event-name">${ev.name}</span>`;
                 html += `<span class="cal-event-time">${fmtTime(ev.start)}</span>`;
@@ -203,6 +209,26 @@ Calendar.render = (() => {
         }
 
         grid.innerHTML = html;
+        grid.onclick = (event) => {
+            const button = event.target.closest('.cal-alarm');
+            if (!button) return;
+
+            const eventId = button.dataset.eventId;
+            const dow = Number(button.dataset.eventDay);
+            const state = getState();
+            const source = [...state.weekly, ...state.dated].find(ev => ev.id === eventId);
+            if (!source) return;
+
+            if (source.days) {
+                if (!source.alarms) source.alarms = {};
+                source.alarms[dow] = source.alarms[dow] !== true;
+                if (!source.alarms[dow]) delete source.alarms[dow];
+            } else {
+                source.alarm = source.alarm !== true;
+            }
+            save();
+            render();
+        };
     }
 
     function collectEvents(dateISO, dow) {

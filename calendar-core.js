@@ -278,10 +278,41 @@ const Calendar = (() => {
         } catch (e) { console.warn('[calendar] save failed', e); }
     }
     function replaceState(newState) {
-        state = { ...DEFAULT_STATE(), ...newState };
-        state.view = { ...DEFAULT_STATE().view, ...(newState.view || {}) };
+        state = normalizeState(newState);
         const ids = [...(state.weekly||[]), ...(state.dated||[])].map(e => e.id);
         nextId = ids.length ? Math.max(...ids.map(i => parseInt(i.slice(1), 10) || 0)) + 1 : 1;
+    }
+
+    function normalizeState(input) {
+        const defaults = DEFAULT_STATE();
+        const source = input && typeof input === 'object' ? input : {};
+        const normalized = {
+            ...defaults,
+            ...source,
+            distances: source.distances && typeof source.distances === 'object' ? source.distances : {},
+            templates: source.templates && typeof source.templates === 'object' ? source.templates : {},
+            weekly: Array.isArray(source.weekly) ? source.weekly : [],
+            dated: Array.isArray(source.dated) ? source.dated : [],
+            overrides: source.overrides && typeof source.overrides === 'object' ? source.overrides : {},
+            lengthOverrides: source.lengthOverrides && typeof source.lengthOverrides === 'object'
+                ? source.lengthOverrides : {},
+            view: { ...defaults.view, ...(source.view || {}) },
+        };
+
+        for (const template of Object.values(normalized.templates)) {
+            if (!Array.isArray(template.items)) template.items = [];
+            if (!Object.prototype.hasOwnProperty.call(template, 'color')) template.color = null;
+            if (!Object.prototype.hasOwnProperty.call(template, 'duration')) template.duration = null;
+        }
+        for (const event of [...normalized.weekly, ...normalized.dated]) {
+            if (event.days) {
+                if (!event.alarms || typeof event.alarms !== 'object') event.alarms = {};
+            } else {
+                event.alarm = event.alarm === true;
+            }
+        }
+        normalized.version = VERSION;
+        return normalized;
     }
 
     function rerender() {
@@ -291,7 +322,7 @@ const Calendar = (() => {
     }
 
     return {
-        VERSION, ParseError, DEFAULT_STATE,
+        VERSION, ParseError, DEFAULT_STATE, normalizeState,
 
         parseTime, parseRange, parseDuration, parseDistance,
         parseDays, parseDaysOrDate, parseDate,

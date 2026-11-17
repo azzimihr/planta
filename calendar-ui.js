@@ -82,6 +82,22 @@
         document.getElementById('cal-today').addEventListener('click', () => { goToday(); scrollToNow(); });
         document.getElementById('cal-back').addEventListener('click', goHome);
         document.getElementById('cal-export').addEventListener('click', exportJSON);
+        document.getElementById('cal-firebase-export').addEventListener('click', () => {
+            Calendar.firebase.exportState()
+                .then(() => window.devConsole.print('Firebase export complete.'))
+                .catch(error => {
+                    window.devConsole.print(error.message || String(error), 'error');
+                    flashError();
+                });
+        });
+        document.getElementById('cal-firebase-import').addEventListener('click', () => {
+            Calendar.firebase.importState()
+                .then(() => window.devConsole.print('Firebase import complete.'))
+                .catch(error => {
+                    window.devConsole.print(error.message || String(error), 'error');
+                    flashError();
+                });
+        });
         document.getElementById('cal-dump').addEventListener('click', () => {
             if (window.confirm("are you sure you want to delete ALL calendar data? this cannot be undone.")) {
                 Calendar.cmd.dumpAll();

@@ -1,0 +1,7 @@
+{
+    "apiKey": "REPLACE_WITH_FIREBASE_WEB_API_KEY",
+    "authDomain": "REPLACE_WITH_FIREBASE_PROJECT_ID.firebaseapp.com",
+    "databaseURL": "https://REPLACE_WITH_FIREBASE_DATABASE_NAME.firebaseio.com",
+    "projectId": "REPLACE_WITH_FIREBASE_PROJECT_ID",
+    "appId": "REPLACE_WITH_FIREBASE_APP_ID"
+}

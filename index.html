@@ -63,6 +63,8 @@
                 <button class="cal-side-btn" id="cal-today">today</button>
                 <button class="cal-side-btn" id="cal-export">export</button>
                 <button class="cal-side-btn" id="cal-import">import</button>
+                <button class="cal-side-btn cal-side-btn-firebase" id="cal-firebase-export">fb export</button>
+                <button class="cal-side-btn cal-side-btn-firebase" id="cal-firebase-import">fb import</button>
                 <button class="cal-side-btn cal-side-btn-danger" id="cal-dump">dump</button>
                 <div class="cal-side-spacer"></div>
                 <div class="cal-side-legend" id="cal-legend"></div>
@@ -87,8 +89,11 @@
     <script src="calendar-core.js"></script>
     <script src="calendar-commands.js"></script>
     <script src="calendar-render.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+    <script src="calendar-firebase.js"></script>
     <script src="calendar-ui.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
-
